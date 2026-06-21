@@ -12,6 +12,8 @@ const HEX_VSTEP = 1.5 * HEX_RADIUS;
 
 export interface Board {
   group: THREE.Group;
+  /** raycast targets; each tile mesh has userData {col,row}. */
+  tiles: THREE.Mesh[];
   /** world position (x,y,z) of a cell center; y is the tile top. */
   cellToWorld(col: number, row: number): THREE.Vector3;
   isPlayerRow(row: number): boolean;
@@ -19,6 +21,7 @@ export interface Board {
 
 export function createBoard(): Board {
   const group = new THREE.Group();
+  const tiles: THREE.Mesh[] = [];
 
   const offsetX = -((COLS - 1) * HEX_W + HEX_W / 2) / 2;
   const offsetZ = -((ROWS - 1) * HEX_VSTEP) / 2;
@@ -54,8 +57,9 @@ export function createBoard(): Board {
       tile.receiveShadow = true;
       tile.userData = { col, row };
       group.add(tile);
+      tiles.push(tile);
     }
   }
 
-  return { group, cellToWorld, isPlayerRow };
+  return { group, tiles, cellToWorld, isPlayerRow };
 }
