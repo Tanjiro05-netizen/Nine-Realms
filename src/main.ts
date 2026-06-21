@@ -7,6 +7,7 @@ import { createSky } from './render/sky';
 import { createBoard } from './render/board';
 import { UnitView } from './render/unitView';
 import { GameState } from './game/state';
+import { CombatController } from './combat/controller';
 import { HUD } from './ui/hud';
 import { Input } from './input/place';
 import { ROSTER } from './data/roster';
@@ -16,7 +17,12 @@ import type { UnitDef } from './data/types';
 declare global {
   interface Window {
     __NINE_REALMS__: { ready: boolean; rosterSize: number };
-    NineRealms: { state: GameState; roster: UnitDef[]; computeTraits: typeof computeTraits };
+    NineRealms: {
+      state: GameState;
+      controller: CombatController;
+      roster: UnitDef[];
+      computeTraits: typeof computeTraits;
+    };
   }
 }
 
@@ -31,6 +37,14 @@ const state = new GameState();
 const unitView = new UnitView(stage.scene, board, state);
 state.onChange(() => unitView.sync());
 
+const controller = new CombatController(stage.scene, stage.camera, board, state, unitView, (result) => {
+  const msg = result === 'player' ? '胜 · VICTORY' : result === 'enemy' ? '败 · DEFEAT' : '平 · DRAW';
+  toast(msg);
+  if (state.isGameOver()) {
+    toast(state.hp <= 0 ? '游戏结束 · GAME OVER' : '天将伏诛 · YOU WIN');
+  }
+});
+
 const input = new Input(canvas, stage.camera, board, state, { onBegin });
 new HUD(state, {
   onBenchClick: (i) => input.benchClick(i),
@@ -41,11 +55,11 @@ unitView.sync();
 hideLoader();
 
 window.__NINE_REALMS__ = { ready: true, rosterSize: ROSTER.length };
-window.NineRealms = { state, roster: ROSTER, computeTraits };
+window.NineRealms = { state, controller, roster: ROSTER, computeTraits };
 
 function onBegin(): void {
-  // Combat is implemented in M4; for now acknowledge the action.
-  toast('开战 — combat lands in M4');
+  if (state.isGameOver()) return;
+  if (!controller.begin()) toast('先布阵 — place a unit first');
 }
 
 function hideLoader(): void {
@@ -67,13 +81,20 @@ function toast(msg: string): void {
 }
 
 const clock = new THREE.Clock();
+let elapsed = 0;
 function animate(): void {
   requestAnimationFrame(animate);
-  const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
+  elapsed += dt;
   stage.controls.update();
-  // gentle idle bob for placed units
-  for (const child of stage.scene.children) {
-    if (child.userData?.uid) child.position.y = 0.25 + Math.sin(t * 1.6 + child.position.x) * 0.04;
+
+  if (state.phase === 'combat') {
+    controller.update(dt, performance.now());
+  } else {
+    // gentle idle bob for placed units while planning
+    for (const child of stage.scene.children) {
+      if (child.userData?.uid) child.position.y = 0.25 + Math.sin(elapsed * 1.6 + child.position.x) * 0.04;
+    }
   }
   stage.renderer.render(stage.scene, stage.camera);
 }

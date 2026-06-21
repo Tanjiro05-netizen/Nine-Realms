@@ -22,6 +22,10 @@ export class UnitView {
     private state: GameState,
   ) {}
 
+  setVisible(visible: boolean): void {
+    for (const view of this.views.values()) view.container.visible = visible;
+  }
+
   sync(): void {
     const board = this.state.board;
     const liveUids = new Set<string>();

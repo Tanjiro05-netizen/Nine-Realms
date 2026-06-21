@@ -7,7 +7,7 @@ export const COLS = 7;
 export const ROWS = 8;
 export const HEX_RADIUS = 1.0;
 
-const HEX_W = Math.sqrt(3) * HEX_RADIUS; // pointy-top width
+export const HEX_W = Math.sqrt(3) * HEX_RADIUS; // pointy-top width (center-to-center horizontally)
 const HEX_VSTEP = 1.5 * HEX_RADIUS;
 
 export interface Board {

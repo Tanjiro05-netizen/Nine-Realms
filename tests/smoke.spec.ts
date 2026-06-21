@@ -40,3 +40,42 @@ test('plan phase: boots, renders HUD, and supports buy -> bench -> board -> trai
 
   expect(errors, `console/page errors: ${errors.join('\n')}`).toEqual([]);
 });
+
+test('combat: 开战 runs a fight to resolution and advances the round', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+  page.on('pageerror', (err) => errors.push(err.message));
+
+  await page.goto('/');
+  await page.waitForFunction(() => window.__NINE_REALMS__?.ready === true, undefined, { timeout: 20_000 });
+
+  const before = await page.evaluate(() => {
+    const s = window.NineRealms.state;
+    const slot = s.shop.findIndex((d) => d !== null);
+    s.buyFromShop(slot);
+    const u = s.bench.find((x) => x !== null)!;
+    s.moveUnit(u.uid, { kind: 'board', col: 3, row: 7 });
+    const started = window.NineRealms.controller.begin();
+    return { started, round: s.round, phase: s.phase };
+  });
+  expect(before.started).toBe(true);
+  expect(before.phase).toBe('combat');
+
+  // Sim runs in the rAF loop; wait for it to resolve back to plan.
+  await page.waitForFunction(
+    (r) => window.NineRealms.state.phase === 'plan' && window.NineRealms.state.round > r,
+    before.round,
+    { timeout: 35_000 },
+  );
+
+  const after = await page.evaluate(() => ({
+    round: window.NineRealms.state.round,
+    result: window.NineRealms.state.lastResult,
+  }));
+  expect(after.round).toBe(before.round + 1);
+  expect(['win', 'loss', 'draw']).toContain(after.result);
+
+  expect(errors, `console/page errors: ${errors.join('\n')}`).toEqual([]);
+});

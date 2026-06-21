@@ -50,7 +50,7 @@ export class HUD {
       </div>
       <div class="lvlpill" id="lvl"></div>`;
     const stage = el('div', 'stagebox');
-    stage.innerHTML = `<div class="st" id="round"></div><div class="pl">PLAN</div>`;
+    stage.innerHTML = `<div class="st" id="round"></div><div class="pl" id="phase">PLAN</div>`;
     top.append(pcard, stage);
     this.root.appendChild(top);
     this.hpEl = pcard.querySelector('#hp-i') as HTMLElement;
@@ -105,6 +105,8 @@ export class HUD {
     this.unitCountEl.textContent = `${s.boardCount()}/${s.level}`;
     this.levelEl.textContent = `Lv ${s.level}`;
     this.roundEl.textContent = `第 ${s.round} 回合`;
+    (this.root.querySelector('#phase') as HTMLElement).textContent =
+      s.phase === 'combat' ? '战斗 · COMBAT' : 'PLAN';
     this.hpEl.style.width = `${s.hp}%`;
     (this.root.querySelector('#hp-t') as HTMLElement).textContent = `${s.hp}`;
     (this.root.querySelector('#xpl') as HTMLElement).textContent = String(s.level);

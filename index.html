@@ -97,6 +97,20 @@
       .btn.start { background: linear-gradient(180deg,#b5392a,#7a2016); border-color: #ff7a4a; color: #ffe; font-size: 16px; padding: 10px 22px; box-shadow: 0 0 18px -4px #ff5a3a; }
       .btn.start:hover { box-shadow: 0 0 26px -2px #ff7a4a; }
 
+      /* combat bars + damage numbers */
+      #bars, #fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 8; }
+      .ubar { position: absolute; width: 52px; }
+      .ubar .hp, .ubar .sh, .ubar .mp { border-radius: 3px; overflow: hidden; }
+      .ubar .hp { height: 6px; background: #1a0f12; border: 1px solid rgba(0,0,0,.6); }
+      .ubar .hp i { display: block; height: 100%; background: linear-gradient(#5be08a,#27b562); transition: width .1s; }
+      .ubar.enemy .hp i { background: linear-gradient(#ff7a6e,#d63a30); }
+      .ubar .sh { height: 3px; margin-top: 1px; background: #20242e; }
+      .ubar .sh i { display: block; height: 100%; background: #e8e8f0; }
+      .ubar .mp { height: 3px; margin-top: 1px; background: #0e1424; }
+      .ubar .mp i { display: block; height: 100%; background: linear-gradient(#7fd4ff,#3f8fe0); }
+      .dmg { position: absolute; font-family: 'Cinzel', serif; font-weight: 800; font-size: 17px; transform: translate(-50%,-50%); text-shadow: 0 2px 4px rgba(0,0,0,.9); transition: transform .65s ease-out, opacity .65s ease-out; }
+      .dmg.crit { font-size: 27px; text-shadow: 0 0 10px #ffae3a, 0 2px 5px #000; }
+
       #toast { position: fixed; left: 50%; bottom: 200px; transform: translateX(-50%); z-index: 30; background: rgba(12,9,18,.92); border: 1px solid var(--line); border-radius: 20px; padding: 8px 20px; font-size: 13px; color: #f0e6d4; letter-spacing: 1px; opacity: 0; transition: .3s; pointer-events: none; }
       #toast.show { opacity: 1; }
     </style>

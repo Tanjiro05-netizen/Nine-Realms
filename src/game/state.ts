@@ -2,7 +2,14 @@
 // 3D unit view stay in sync. Economy/leveling per Bible §13/§15.
 
 import type { UnitDef } from '../data/types';
-import { ECONOMY, XP_TO_NEXT, LEVEL_CAP } from '../data/constants';
+import {
+  ECONOMY,
+  XP_TO_NEXT,
+  LEVEL_CAP,
+  streakGold,
+  winDamage,
+  lossDamage,
+} from '../data/constants';
 import { ROWS, COLS } from '../render/board';
 import { Pool } from './pool';
 import {
@@ -25,6 +32,10 @@ export class GameState {
   round = 1;
   hp = 100;
   enemyHp = 100;
+  phase: 'plan' | 'combat' = 'plan';
+  winStreak = 0;
+  lossStreak = 0;
+  lastResult: 'win' | 'loss' | 'draw' | null = null;
 
   pool = new Pool();
   shop: (UnitDef | null)[] = [];
@@ -70,6 +81,7 @@ export class GameState {
 
   // ---- economy ----
   reroll(): boolean {
+    if (this.phase !== 'plan') return false;
     if (this.gold < ECONOMY.rerollCost) return false;
     this.gold -= ECONOMY.rerollCost;
     this.shop = this.pool.rollShop(this.level, ECONOMY.shopSlots);
@@ -78,6 +90,7 @@ export class GameState {
   }
 
   buyXP(): boolean {
+    if (this.phase !== 'plan') return false;
     if (this.level >= LEVEL_CAP) return false;
     if (this.gold < ECONOMY.xpBuyCost) return false;
     this.gold -= ECONOMY.xpBuyCost;
@@ -100,12 +113,51 @@ export class GameState {
     this.emit();
   }
 
+  // ---- combat lifecycle ----
+  beginCombat(): boolean {
+    if (this.phase !== 'plan' || this.boardCount() === 0) return false;
+    this.phase = 'combat';
+    this.selectedUid = null;
+    this.emit();
+    return true;
+  }
+
+  /** Apply a fight result, award income, advance the round, and reroll. */
+  resolveCombat(result: 'win' | 'loss' | 'draw', allySurvivors: number, enemySurvivors: number): void {
+    this.lastResult = result === 'loss' ? 'loss' : result;
+    if (result === 'win') {
+      this.enemyHp = Math.max(0, this.enemyHp - Math.round(winDamage(this.round, allySurvivors)));
+      this.winStreak += 1;
+      this.lossStreak = 0;
+    } else if (result === 'loss') {
+      this.hp = Math.max(0, this.hp - Math.round(lossDamage(this.round, enemySurvivors)));
+      this.lossStreak += 1;
+      this.winStreak = 0;
+    }
+
+    // income: base + interest + streak (Bible §13)
+    const interest = Math.min(ECONOMY.interestCap, Math.floor(this.gold / ECONOMY.interestPer));
+    const streak = streakGold(Math.max(this.winStreak, this.lossStreak));
+    this.gold += ECONOMY.baseIncome + interest + streak;
+    this.addXP(ECONOMY.freeXpPerRound);
+
+    this.round += 1;
+    if (!this.shopFrozen) this.shop = this.pool.rollShop(this.level, ECONOMY.shopSlots);
+    this.phase = 'plan';
+    this.emit();
+  }
+
+  isGameOver(): boolean {
+    return this.hp <= 0 || this.enemyHp <= 0;
+  }
+
   // ---- shop / units ----
   private firstFreeBench(): number {
     return this.bench.findIndex((s) => s === null);
   }
 
   buyFromShop(slot: number): boolean {
+    if (this.phase !== 'plan') return false;
     const def = this.shop[slot];
     if (!def) return false;
     if (this.gold < def.cost) return false;
@@ -127,6 +179,7 @@ export class GameState {
   }
 
   sell(uid: string): boolean {
+    if (this.phase !== 'plan') return false;
     const unit = this.unitById(uid);
     if (!unit) return false;
     this.gold += sellValue(unit);
@@ -173,6 +226,7 @@ export class GameState {
 
   /** Move a unit to a destination, swapping with any occupant. Returns true on success. */
   moveUnit(uid: string, dest: UnitLoc): boolean {
+    if (this.phase !== 'plan') return false;
     const unit = this.unitById(uid);
     if (!unit) return false;
     if (dest.kind === 'board') {
