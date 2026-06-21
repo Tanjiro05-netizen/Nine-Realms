@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# Node / build (for the future Vite+TS port)
+node_modules/
+dist/
+*.log
+
+# Large 3D assets — track via Git LFS or keep external, not in plain git
+*.glb
+*.gltf
+*.fbx
